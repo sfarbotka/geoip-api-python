@@ -757,6 +757,21 @@ static PyMethodDef GeoIP_module_methods[] = {
     { NULL,                              NULL,                0,NULL }
 };
 
+
+#if PY_MAJOR_VERSION >= 3
+
+PyObject* GeoIP_Latin1ToPyString(const char *u)
+{
+    return PyUnicode_DecodeLatin1(u, strlen(u), NULL);
+}
+
+#else
+
+// Do not change behavior for compatibility with previous python-geoip versions
+#define GeoIP_Latin1ToPyString PyString_FromString
+
+#endif
+
 /* Code shared between 2.x and 3.x module initialization. */
 static int
 GeoIP_populate_module(PyObject *m)
@@ -786,14 +801,15 @@ GeoIP_populate_module(PyObject *m)
     CHECK_NULL(ccont = PyDict_New());
 
     for (i = 0; i < total_ccodes; i++) {
-        CHECK_NULL(tmp = PyUnicode_FromString(GeoIP_country_code[i]));
+        // All GeoIP_country_{code,name,continent} are in LATIN1 encoding
+        CHECK_NULL(tmp = GeoIP_Latin1ToPyString(GeoIP_country_code[i]));
         PyTuple_SET_ITEM(ccode, i, tmp);
 
-        CHECK_NULL(tmp = PyUnicode_FromString(GeoIP_country_name[i]));
+        CHECK_NULL(tmp = GeoIP_Latin1ToPyString(GeoIP_country_name[i]));
         CHECK(PyDict_SetItemString(cname, GeoIP_country_code[i], tmp));
         Py_DECREF(tmp);
 
-        CHECK_NULL(tmp = PyUnicode_FromString(GeoIP_country_continent[i]));
+        CHECK_NULL(tmp = GeoIP_Latin1ToPyString(GeoIP_country_continent[i]));
         CHECK(PyDict_SetItemString(ccont, GeoIP_country_code[i], tmp));
         Py_DECREF(tmp);
     }
@@ -802,6 +818,7 @@ GeoIP_populate_module(PyObject *m)
     CHECK(PyModule_AddObject(m, "country_codes", ccode));
     CHECK(PyModule_AddObject(m, "country_names", cname));
     CHECK(PyModule_AddObject(m, "country_continents", ccont));
+
 
     CHECK(PyModule_AddIntMacro(m, GEOIP_STANDARD));
     CHECK(PyModule_AddIntMacro(m, GEOIP_MEMORY_CACHE));
